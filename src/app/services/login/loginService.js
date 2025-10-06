@@ -64,7 +64,7 @@ export const getUserLogin = async (username, password) => {
     }
 
     // ✅ Success
-    return common.setResponse(successStatus, "Login successful", {
+    return common.setResponse(successStatus, "Login successfully", {
       service: "getUserLogin",
       data: foundUser,
     });

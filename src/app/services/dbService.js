@@ -1,5 +1,5 @@
 import { ref, get, set, remove, update } from "firebase/database";
-import { getActiveConnection } from "./firebaseClient";
+import {  getCurrentDatabase } from "./firebaseClient";
 
 /**
  * Fetch data from the Realtime Database at the given path.
@@ -79,7 +79,7 @@ export const RemoveData = (path) => {
  * in `firebaseClient`. Returns `null` if no database connection is currently active.
  */
 function getDb() {
-  const { db } = getActiveConnection();
+  const db = getCurrentDatabase();
   if (!db) return null; // safer than throwing, caller can handle null
   return db;
 }

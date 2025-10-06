@@ -4,45 +4,7 @@ import { getActiveConnection } from "./firebaseClient";
 let successStatus = "success";
 let failStatus = "fail";
 
-/**
- * @function getCityDetailsJson
- * @description 
- * Fetches the `CityDetails.json` file from Firebase Storage for the currently 
- * connected city/project. Uses the active `firebaseStoragePath` from the 
- * Firebase connection object to construct the request URL.
- * 
- * ✅ Success → Returns city list JSON data.  
- * ❌ Failure → Returns "City list unavailable." with error details.
- *
- * @returns {Promise<object>} Standard response object containing status, message, and data
- * @author Ritik Parmar
- * @date 03 Oct 2025
- */
-export const getCityDetailsJson = async () => {
-  try {
-    // Build the URL from the active storage path
-    const url = `${getStoragePath()}Common%2FCityDetails%2FCityDetails.json?alt=media`;
 
-    const res = await axios.get(url);
-
-    if (res && res.data) {
-      return setResponse(successStatus, "City list fetched successfully.", {
-        service: "getCityDetailsJson",
-        data: res.data,
-      });
-    } else {
-      return setResponse(failStatus, "City list unavailable.", {
-        service: "getCityDetailsJson",
-        params: { res },
-      });
-    }
-  } catch (error) {
-    return setResponse(failStatus, "City list unavailable.", {
-      service: "getCityDetailsJson",
-      params: { error: error.message },
-    });
-  }
-};
 
 /**
  * @function setResponse
@@ -82,10 +44,11 @@ export const setResponse = (status, msg, data = {}) => {
  * @date 03 Oct 2025
  */
 export const getStoragePath = () => {
-  const { firebaseStoragePath } = getActiveConnection();
-  return firebaseStoragePath || null;
+  const active = getActiveConnection();
+  return active.firebaseStoragePath || null;
 };
 export const getCityStoragePath = () => {
-  const { firebaseStoragePath, cityName } = getActiveConnection();
-  return `${firebaseStoragePath}${cityName}` || null;
+  const active = getActiveConnection();
+
+  return `${active.firebaseStoragePath}${active.cityName}` || null;
 };
