@@ -1,8 +1,4 @@
-import axios from "axios";
-import { getActiveConnection } from "./firebaseClient";
-
-let successStatus = "success";
-let failStatus = "fail";
+import * as firebaseFunction from "./firebaseClient";
 
 
 
@@ -44,11 +40,15 @@ export const setResponse = (status, msg, data = {}) => {
  * @date 03 Oct 2025
  */
 export const getStoragePath = () => {
-  const active = getActiveConnection();
-  return active.firebaseStoragePath || null;
-};
+ const { storagePath } = firebaseFunction.getActiveFirebaseConnection() || {};
+ return storagePath
+}
 export const getCityStoragePath = () => {
-  const active = getActiveConnection();
+ const { db, cityName, storagePath } = firebaseFunction.getActiveFirebaseConnection() || {};
 
-  return `${active.firebaseStoragePath}${active.cityName}` || null;
+if (db) {
+  console.log("🔥 Connected DB for:", cityName);
+  console.log("📁 Storage Path:", storagePath);
+}
+  return `${storagePath}${cityName}` || null;
 };

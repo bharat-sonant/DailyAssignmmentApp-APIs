@@ -1,100 +1,93 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
-import { loadFirebaseConfig, saveFirebaseConfig } from "../../config/firebaseConfigStore";
 
 /**
- * @function initFirebase
- * @description Initializes Firebase dynamically with the given config object. 
- * If no config is passed, the last saved config is loaded from local storage (JSON file).
- * The connection persists until explicitly changed by another city selection.
- * @param {object} [connectObj=null] - Firebase configuration object
- * @returns {import("firebase/database").Database|null} Active Realtime Database instance
- * @author Ritik Parmar
- * @date 03 Oct 2025
+ * 🔹 Firebase App Registry (Safe across hot reloads)
+ * Ensures only one Firebase app per city/project is active.
  */
-export function initFirebase(connectObj = null) {
-  try {
-    // 1️⃣ Load saved config if not provided
-    if (!connectObj) {
-      connectObj = loadFirebaseConfig();
-    }
+const globalForFirebase = globalThis;
+if (!globalForFirebase.firebaseRegistry) {
+  globalForFirebase.firebaseRegistry = new Map();
+}
+const firebaseRegistry = globalForFirebase.firebaseRegistry;
 
-    if (!connectObj || !connectObj.databaseURL) {
-      throw new Error("Missing Firebase config or databaseURL");
-    }
-
-    const key = `${connectObj.projectId}_${connectObj.databaseURL}`;
-    const appName = Buffer.from(key).toString("base64");
-
-    // 2️⃣ Initialize or reuse Firebase app
-    let app;
-    if (getApps().some((a) => a.name === appName)) {
-      app = getApp(appName);
-    } else {
-      app = initializeApp(
-        {
-          apiKey: connectObj.apiKey,
-          authDomain: connectObj.authDomain,
-          databaseURL: connectObj.databaseURL,
-          projectId: connectObj.projectId,
-          storageBucket: connectObj.storageBucket,
-          messagingSenderId: connectObj.messagingSenderId,
-          appId: connectObj.appId,
-        },
-        appName
-      );
-    }
-
-    // 3️⃣ Get and return database instance
-    const db = getDatabase(app);
-
-    // 4️⃣ Save config persistently for future access
-    saveFirebaseConfig(connectObj);
-
-    return db;
-  } catch (error) {
-    console.error("❌ initFirebase Error:", error);
+/**
+ * @function getFirebaseApp
+ * @description Initializes or reuses Firebase app (per city/project)
+ * Works both client-side and server-side.
+ * @param {object} connectObj - Firebase config object
+ * @returns {{ app, db, cityName, storagePath }}
+ */
+export function getFirebaseApp(connectObj) {
+  if (!connectObj || !connectObj.databaseURL) {
+    console.log("❌ Invalid Firebase configuration — databaseURL missing.");
     return null;
   }
+
+  const key = connectObj.projectId || connectObj.city || connectObj.databaseURL;
+  console.log("🧠 Firebase app key:", key);
+
+  // ✅ 1. Reuse existing app if found
+  if (firebaseRegistry.has(key)) {
+    console.log("♻️ Reusing existing Firebase app:", key);
+    return firebaseRegistry.get(key);
+  }
+
+  // 🔁 2. If different app is active, clear registry
+  const existingKeys = Array.from(firebaseRegistry.keys());
+  if (existingKeys.length > 0 && existingKeys[0] !== key) {
+    console.log(`🔁 Switching Firebase app: ${existingKeys[0]} → ${key}`);
+    firebaseRegistry.clear();
+  }
+
+  // 🚀 3. Initialize new app safely
+  let app;
+  const existingApp = getApps().find((a) => a.name === key);
+  if (existingApp) {
+    console.log("♻️ Found existing Firebase app instance via getApps()");
+    app = getApp(key);
+  } else {
+    console.log("🚀 Initializing new Firebase app for:", key);
+    app = initializeApp(
+      {
+        apiKey: connectObj.apiKey,
+        authDomain: connectObj.authDomain,
+        databaseURL: connectObj.databaseURL,
+        projectId: connectObj.projectId,
+        storageBucket: connectObj.storageBucket,
+        messagingSenderId: connectObj.messagingSenderId,
+        appId: connectObj.appId,
+      },
+      key
+    );
+  }
+
+  // 🔗 4. Initialize database and optional storagePath
+  const db = getDatabase(app);
+  const storagePath = connectObj.firebaseStoragePath || null;
+
+  // 💾 5. Register this app globally
+  const connection = { app, db, cityName: connectObj.cityName, storagePath };
+  firebaseRegistry.set(key, connection);
+
+  console.log(`✅ Firebase initialized for: ${connectObj.cityName || key}`);
+  return connection;
 }
 
 /**
- * @function getActiveConnection
- * @description Returns the last saved Firebase configuration (without initializing Firebase).
- * @returns {object|null} Last saved Firebase configuration object
- * @author Ritik Parmar
- * @date 06 Oct 2025
+ * @function getActiveFirebaseConnection
+ * @description Returns the currently active Firebase connection
+ * @returns {{ app, db, cityName, storagePath } | null}
  */
-export function getActiveConnection() {
-  try {
-    const savedConfig = loadFirebaseConfig();
-    if (savedConfig) {
-      return savedConfig;
-    }
-    return null;
-  } catch (error) {
+export function getActiveFirebaseConnection() {
+  const existingKeys = Array.from(firebaseRegistry.keys());
+  if (existingKeys.length === 0) {
+    console.warn("⚠️ No active Firebase connection found.");
     return null;
   }
-}
 
-/**
- * @function getCurrentDatabase
- * @description Returns the current Firebase Realtime Database instance 
- * from the initialized Firebase app, without reinitializing.
- * @returns {import("firebase/database").Database|null} Firebase Database instance
- * @author Ritik Parmar
- * @date 06 Oct 2025
- */
-export function getCurrentDatabase() {
-  try {
-    const apps = getApps();
-    if (apps.length > 0) {
-      const currentApp = getApp(apps[0]);
-      return getDatabase(currentApp);
-    }
-
-    return null;
-  } catch (error) {
-    return null;
-  }
+  const key = existingKeys[0];
+  const connection = firebaseRegistry.get(key);
+  console.log(`📡 Active Firebase connection: ${connection.cityName || key}`);
+  return connection;
 }
