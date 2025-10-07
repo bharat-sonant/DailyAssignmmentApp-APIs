@@ -23,8 +23,8 @@ export function getFirebaseApp(connectObj) {
     console.log("❌ Invalid Firebase configuration — databaseURL missing.");
     return null;
   }
-
-  const key = connectObj.projectId || connectObj.city || connectObj.databaseURL;
+  console.log('connectObj', connectObj);
+  const key = connectObj.city || connectObj.databaseURL || connectObj.projectId;
   console.log("🧠 Firebase app key:", key);
 
   // ✅ 1. Reuse existing app if found
