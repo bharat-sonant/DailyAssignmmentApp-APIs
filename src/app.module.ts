@@ -4,10 +4,11 @@ import { AppService } from './app.service';
 import { CityModule } from './modules/city/city.module';
 import { CommonModule } from './Common/common.module';
 import { LoginModule } from './modules/login/login.module';
+import { DashboardCountModule } from './modules/dashboard-count/dashboard-count.module';
 
 
 @Module({
-  imports: [CityModule,CommonModule, LoginModule],
+  imports: [CityModule,CommonModule, LoginModule, DashboardCountModule],
   controllers: [AppController],
   providers: [AppService],
 })
